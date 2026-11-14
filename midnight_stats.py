@@ -30,7 +30,8 @@ SECS_PER_HOUR = SECS_PER_MINUTE * 60
 SECS_PER_DAY = 24 * SECS_PER_HOUR
 CUTOFF_DEFAULT = SECS_PER_DAY // 2
 
-def is_day_before(cutoff:int, seconds:int) -> bool:
+
+def is_day_before(cutoff: int, seconds: int) -> bool:
     """Report whether a time belongs to the day before midnight.
 
     Args:
@@ -42,7 +43,8 @@ def is_day_before(cutoff:int, seconds:int) -> bool:
     """
     return seconds >= cutoff
 
-def median_of_sorted(sorted_all_secs:list[int]) -> int:
+
+def median_of_sorted(sorted_all_secs: list[int]) -> int:
     """Return the median of an already sorted list of seconds.
 
     Args:
@@ -62,9 +64,10 @@ def median_of_sorted(sorted_all_secs:list[int]) -> int:
         return sorted_all_secs[count // 2]
     a = sorted_all_secs[count // 2]
     b = sorted_all_secs[(count // 2) - 1]
-    return (a+b)//2
+    return (a + b) // 2
 
-def mean(all_seconds:list[int]) -> float:
+
+def mean(all_seconds: list[int]) -> float:
     """Return the exact mean of a list of seconds.
 
     The result is not rounded, so variance() can measure differences from the true
@@ -84,7 +87,8 @@ def mean(all_seconds:list[int]) -> float:
     mean_seconds = sum(all_seconds) / len(all_seconds)
     return mean_seconds
 
-def variance(all_seconds:list[int], mean_all_seconds:float) -> float:
+
+def variance(all_seconds: list[int], mean_all_seconds: float) -> float:
     """Return the sample variance of a list of seconds.
 
     This is the average of the squared differences from the mean, divided by
@@ -104,10 +108,11 @@ def variance(all_seconds:list[int], mean_all_seconds:float) -> float:
     """
     if len(all_seconds) <= 1:
         raise ValueError("cannot take the variance of an empty or single item list")
-    diff_seconds = [(n-mean_all_seconds)**2 for n in all_seconds]
-    return sum(diff_seconds) / (len(diff_seconds)-1)
+    diff_seconds = [(n - mean_all_seconds) ** 2 for n in all_seconds]
+    return sum(diff_seconds) / (len(diff_seconds) - 1)
 
-def standard_deviation(all_seconds:list[int], mean_all_seconds:float) -> float:
+
+def standard_deviation(all_seconds: list[int], mean_all_seconds: float) -> float:
     """Return the sample standard deviation of a list of seconds.
 
     This is the square root of variance(), which turns seconds squared back into
@@ -125,7 +130,8 @@ def standard_deviation(all_seconds:list[int], mean_all_seconds:float) -> float:
     """
     return math.sqrt(variance(all_seconds, mean_all_seconds))
 
-def wall_time(input_seconds:int) -> str:
+
+def wall_time(input_seconds: int) -> str:
     """Convert a signed offset from midnight into a 24-hour clock time.
 
     Offsets wrap around the day, so negative values count back from midnight
@@ -142,6 +148,7 @@ def wall_time(input_seconds:int) -> str:
     hours, seconds_since_start_of_hour = divmod(second_of_the_day, SECS_PER_HOUR)
     minutes, seconds = divmod(seconds_since_start_of_hour, SECS_PER_MINUTE)
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
 
 def convert_hhmm_to_secs(hhmm_str: str) -> int:
     """Convert a 24-hour HH:MM time into seconds since midnight.
@@ -175,7 +182,8 @@ def convert_hhmm_to_secs(hhmm_str: str) -> int:
     secs += (mm * SECS_PER_MINUTE)
     return secs
 
-def length_of_time(input_seconds:int) -> str:
+
+def length_of_time(input_seconds: int) -> str:
     """Format a length of time, as opposed to a time of day.
 
     Unlike wall_time(), this does not wrap around the day, so 25 hours stays 25h.
@@ -190,6 +198,7 @@ def length_of_time(input_seconds:int) -> str:
     hours, seconds_since_start_of_hour = divmod(input_seconds, SECS_PER_HOUR)
     minutes, seconds = divmod(seconds_since_start_of_hour, SECS_PER_MINUTE)
     return f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
+
 
 def read_times(fname: str) -> list[int]:
     """Read one HH:MM time per line from a file, skipping blank lines.
@@ -289,7 +298,7 @@ def main() -> int:
 
     if len(offsets) <= 1:
         return 0
-    sd_secs = standard_deviation(offsets,mean_seconds)
+    sd_secs = standard_deviation(offsets, mean_seconds)
     sd = length_of_time(round(sd_secs))
     print(f"sd : {sd}")
 

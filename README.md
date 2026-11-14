@@ -49,7 +49,7 @@ With the default cutoff, every time must be within 12 hours of midnight. If the 
 python3 check_midnight_stats.py [--cutoff HH:MM]
 ```
 
-This runs `midnight_stats.py` on every `test*.txt` file and compares its mean, median and standard deviation with an independent calculation that uses Python's `statistics` module. It prints PASS, FAIL or ERROR for each file.
+This runs `midnight_stats.py` on every `test*.txt` file and compares its mean, median and standard deviation with an independent calculation that uses Python's `statistics` module. It prints PASS, FAIL or ERROR for each file, and exits with status 1 if any file doesn't pass.
 
 ## References
 

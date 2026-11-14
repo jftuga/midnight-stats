@@ -113,24 +113,38 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main() -> None:
-    """Check every test*.txt file and print one PASS, FAIL or ERROR row per file."""
+def main() -> int:
+    """Check every test*.txt file and print one PASS, FAIL or ERROR row per file.
+
+    Returns:
+        The exit status: 0 if every file passed, 1 if any file failed or errored,
+        or if no test*.txt files were found.
+    """
     args = parse_args()
     script = args.folder / "midnight_stats.py"
+    paths = sorted(args.folder.glob("test*.txt"))
+    if not paths:
+        print(f"Error: no test*.txt files in {args.folder}", file=sys.stderr)
+        return 1
+
     print(f"cutoff: {args.cutoff or 'default'}")
     print(f"{'file':<10} {'avg got':<8} {'avg want':<8} {'med got':<8} {'med want':<8} {'sd got':<11} {'sd want':<11} result")
-    for path in sorted(args.folder.glob("test*.txt")):
+    all_passed = True
+    for path in paths:
         values = [to_seconds(line) for line in path.read_text().splitlines()]
         want = expected(values)
         try:
             got = actual(script, path, args.cutoff)
         except subprocess.CalledProcessError as err:
-            last_line = (err.stderr.strip().splitlines() or ["no error output"])[-1]
+            last_line = (err.stderr.strip().splitlines() or ["no error output"])[-1].removeprefix("Error: ")
             print(f"{path.name:<10} ERROR: {last_line}")
+            all_passed = False
             continue
         result = "PASS" if got == want else "FAIL"
+        all_passed = all_passed and result == "PASS"
         print(f"{path.name:<10} {got[0]:<8} {want[0]:<8} {got[1]:<8} {want[1]:<8} {got[2]:<11} {want[2]:<11} {result}")
+    return 0 if all_passed else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
