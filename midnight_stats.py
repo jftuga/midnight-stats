@@ -58,7 +58,6 @@ def median_of_sorted(sorted_all_secs:list[int]) -> int:
     count = len(sorted_all_secs)
     if not count:
         raise ValueError("cannot take the median of an empty list")
-    # print(f"{set_length=}")
     if count % 2 == 1:
         return sorted_all_secs[count // 2]
     a = sorted_all_secs[count // 2]
@@ -140,17 +139,15 @@ def wall_time(input_seconds:int) -> str:
         -76 returns "23:58:44".
     """
     second_of_the_day = input_seconds % SECS_PER_DAY
-    # print(f"{second_of_the_day=}")
     hours, seconds_since_start_of_hour = divmod(second_of_the_day, SECS_PER_HOUR)
-    # print(f"{hours=}, {seconds_since_start_of_hour=}")
     minutes, seconds = divmod(seconds_since_start_of_hour, SECS_PER_MINUTE)
-    # print(f"{minutes=}, {seconds=}")
     return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 def convert_hhmm_to_secs(hhmm_str: str) -> int:
     """Convert a 24-hour HH:MM time into seconds since midnight.
 
     Single-digit hours and minutes are accepted, so "7:05" is the same as "07:05".
+    Surrounding whitespace, including a trailing newline, is ignored.
 
     Args:
         hhmm_str: The time to convert, such as "23:48".
@@ -163,13 +160,16 @@ def convert_hhmm_to_secs(hhmm_str: str) -> int:
         ValueError: If hhmm_str is not two numbers separated by a colon, or the
             hour or minute is out of range.
     """
-    hh,mm = hhmm_str.split(":")
-    hh = int(hh)
-    mm = int(mm)
-    if hh < 0 or hh > 23:
-        raise ValueError(f"invalid hhmm value (hour): {hhmm_str}")
-    if mm < 0 or mm > 59:
-        raise ValueError(f"invalid hhmm value (minute): {hhmm_str}")
+    hhmm_str = hhmm_str.strip()
+    parts = hhmm_str.split(":")
+    if len(parts) != 2 or not all(part.isdecimal() for part in parts):
+        raise ValueError(f"not an HH:MM time: {hhmm_str!r}")
+    hh = int(parts[0])
+    mm = int(parts[1])
+    if hh > 23:
+        raise ValueError(f"hour must be 00 to 23: {hhmm_str!r}")
+    if mm > 59:
+        raise ValueError(f"minute must be 00 to 59: {hhmm_str!r}")
 
     secs = hh * SECS_PER_HOUR
     secs += (mm * SECS_PER_MINUTE)
@@ -190,6 +190,32 @@ def length_of_time(input_seconds:int) -> str:
     hours, seconds_since_start_of_hour = divmod(input_seconds, SECS_PER_HOUR)
     minutes, seconds = divmod(seconds_since_start_of_hour, SECS_PER_MINUTE)
     return f"{hours:02d}h {minutes:02d}m {seconds:02d}s"
+
+def read_times(fname: str) -> list[int]:
+    """Read one HH:MM time per line from a file, skipping blank lines.
+
+    Args:
+        fname: The path of the file to read.
+
+    Returns:
+        Each time as seconds since midnight, in file order. The list is empty if
+        the file holds no times.
+
+    Raises:
+        ValueError: If a line is not a valid HH:MM time. The message names the
+            file and the line number.
+        OSError: If the file can't be opened or read.
+    """
+    all_seconds = []
+    with open(fname) as fp:
+        for line_number, line in enumerate(fp, start=1):
+            if not line.strip():
+                continue
+            try:
+                all_seconds.append(convert_hhmm_to_secs(line))
+            except ValueError as err:
+                raise ValueError(f"{fname}, line {line_number}: {err}") from err
+    return all_seconds
 
 
 def usage() -> None:
@@ -219,11 +245,8 @@ def main() -> int:
 
     Returns:
         The exit status: 0 on success or when help was shown, 1 for a wrong
-        number of arguments or an empty file.
-
-    Raises:
-        ValueError: If the cutoff or any line in the file is not a valid HH:MM time.
-        OSError: If the file can't be opened.
+        number of arguments, an invalid cutoff, a file that can't be read, an
+        invalid line or an empty file. Each error prints one message to stderr.
     """
     if len(sys.argv) == 1 or "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
         usage()
@@ -233,22 +256,22 @@ def main() -> int:
         usage()
         return 1
 
-    if len(sys.argv) == 2:
-        cutoff = CUTOFF_DEFAULT
-        fname = sys.argv[1]
-    else:
-        cutoff = convert_hhmm_to_secs(sys.argv[1])
-        fname = sys.argv[2]
-    with open(fname) as fp:
-        lines = fp.read().splitlines()
-        lines = [line for line in lines if line.strip()]
-
-    if not len(lines):
-        print("Error: no values provided", file=sys.stderr)
+    fname = sys.argv[-1]
+    try:
+        cutoff = convert_hhmm_to_secs(sys.argv[1]) if len(sys.argv) == 3 else CUTOFF_DEFAULT
+    except ValueError as err:
+        print(f"Error: cutoff: {err}", file=sys.stderr)
         return 1
 
-    all_seconds = [convert_hhmm_to_secs(line) for line in lines]
-    # print(f"{all_seconds=}")
+    try:
+        all_seconds = read_times(fname)
+    except (ValueError, OSError) as err:
+        print(f"Error: {err}", file=sys.stderr)
+        return 1
+
+    if not all_seconds:
+        print(f"Error: no times in {fname}", file=sys.stderr)
+        return 1
 
     # Turn seconds since midnight into signed offsets from midnight, so all the times
     # form one continuous range: negative before midnight, positive after. Each value
@@ -257,18 +280,7 @@ def main() -> int:
     # 12:00 cutoff, [85800, 600] (23:50, 00:10) becomes [-600, 600].
     # All statistics below are calculated from offsets, never from all_seconds.
     offsets = [secs - SECS_PER_DAY if is_day_before(cutoff, secs) else secs for secs in all_seconds]
-    # for i,_ in enumerate(all_seconds):
-    #     if is_day_before(cutoff, all_seconds[i]):
-    #         all_seconds[i] -= SECS_PER_DAY
     mean_seconds = mean(offsets)
-    #mean_seconds = math.floor(mean_seconds)
-
-
-    #print(f"{offsets=}")
-    #print(f"{mean_seconds=} {total_seconds=}")
-    #print("="*77)
-
-    # average = seconds_to_minutes_and_seconds(mean_seconds)
     print(f"avg: {wall_time(math.floor(mean_seconds))}")
 
     sorted_offsets = sorted(offsets)
@@ -279,11 +291,10 @@ def main() -> int:
         return 0
     sd_secs = standard_deviation(offsets,mean_seconds)
     sd = length_of_time(round(sd_secs))
-    #print(f"sd_secs: {sd_secs:.2f}")
     print(f"sd : {sd}")
 
     return 0
-            
+
 
 if __name__ == "__main__":
     sys.exit(main())
