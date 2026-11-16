@@ -41,7 +41,7 @@ Each time is converted to seconds since midnight. Times at or after the cutoff h
 
 The standard deviation is calculated from the same signed values: square each value's difference from the exact mean, add the squares up, divide by n - 1, and take the square root. Dividing by n - 1 rather than n treats the times as a sample, such as a few weeks of logins standing in for a person's usual habit. The result is a length of time, rounded to the nearest second, so it's printed as hours, minutes and seconds rather than as a clock time.
 
-With the default cutoff, every time must be within 12 hours of midnight. If the times center on a different hour, set the cutoff 12 hours away from that hour.
+The cluster of times must not straddle the cutoff. If it does, the cluster is split in two and the halves land at opposite ends of the range, so the results are wrong. With the default cutoff of 12:00, times that cluster around midnight are safe. If the times center on a different hour, set the cutoff 12 hours away from that hour.
 
 ## Testing
 

@@ -17,7 +17,7 @@ Before calculating, it converts each time to seconds since midnight and subtract
 - **Mean and median:** printed as clock times, rounded down to whole seconds and converted back with `%`, which wraps negative values back to the previous evening.
 - **Standard deviation:** the sample standard deviation (dividing by n - 1), calculated from the exact mean, rounded to the nearest second and printed as a length of time by `length_of_time()`. It's left out when the file holds only one time.
 
-The method requires every time to be within 12 hours of the point opposite the cutoff. With the default cutoff, that means within 12 hours of midnight.
+The method requires that the cluster of times doesn't straddle the cutoff. If it does, the cluster is split in two and the halves land at opposite ends of the range. The safest cutoff is 12 hours away from the center of the cluster, which for times around midnight is the default.
 
 `check_midnight_stats.py` checks all three statistics for each `test*.txt` file against an independent calculation that uses Python's `statistics` module.
 
@@ -81,19 +81,20 @@ Open question: whether to keep accepting plain `HH:MM` files alongside the dated
 
 ## Alternative: circular statistics
 
-Circular statistics would remove the cutoff completely, along with its 12-hour limit.
+Circular statistics would remove the cutoff completely, along with the rule that the times can't straddle it.
 
 - **Circular mean:** treat each time as an angle on a 24-hour circle, average the sine and cosine of the angles, and convert back with `atan2`.
-- **Mean resultant length (R):** a value from 0 to 1 that measures how tightly the times cluster. It could replace the standard deviation as the consistency measure.
+- **Mean resultant length (R):** a value from 0 to 1 that measures how tightly the times cluster. It could replace the standard deviation as the consistency measure. For R > 0, `sqrt(-2 * ln(R))` gives the circular standard deviation in radians; multiply by `86400 / (2 * pi)` to convert it to seconds. This is a different measure from the current sample standard deviation.
 
 The downsides:
 
 - For tight clusters, the result is almost the same as the current method.
 - It's harder to explain and to check by hand.
 - There's no simple equivalent of the median or percentiles.
-- For times spread around the whole clock, it still gives an average, but that average doesn't describe anything.
+- For times spread around the whole clock, the average may not describe the data well. When R is zero, the circular mean is undefined; near zero, it is unstable. The cutoff method can also give a misleading average; circular statistics at least report a low R as a warning.
+- The results carry floating-point error. A lone 00:11 can come back as 659.9999999999999 seconds, depending on the implementation and operation order, so the mean must be rounded to a sensible precision before it's rounded down to a clock time. When the arrows cancel, R can come out near 1e-16 rather than exactly 0, so "no answer" has to be detected with a threshold.
 
-Recommendation: keep the cutoff method, and consider circular statistics only if real data regularly breaks the 12-hour limit.
+Recommendation: keep the cutoff method, and consider circular statistics only if real data regularly straddles the cutoff, wherever it's set.
 
 ## Alternative: hand off to go-stats-calculator
 
@@ -107,7 +108,7 @@ This avoids writing the statistics a second time, at the cost of depending on a 
 
 ## Known test gaps
 
-- **Median rounding.** With whole-minute input, this can't happen. The midpoint of two whole-minute values is always a multiple of 30 seconds, so `(a+b)//2` never has a remainder. It would only matter if the input format gained seconds.
+- **Median rounding.** With whole-minute input, this can't happen. The midpoint of two whole-minute values is always a multiple of 30 seconds, so `(a + b) // 2` never has a remainder. It would only matter if the input format gained seconds.
 - **Non-default cutoff.** The checker's reference always uses a 12:00 cutoff, so `--cutoff` runs check `midnight_stats.py` against the correct answer, not against what that cutoff should produce. No test confirms that a custom cutoff shifts exactly the times it should.
 
 ## Recommended order
